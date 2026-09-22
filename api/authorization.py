@@ -81,7 +81,7 @@ DENIED_ACTIONS = {
 }
 
 _INCIDENT_ID = re.compile(r"^INC-[0-9]{4,8}$")
-_SAFE_IDENTITY = re.compile(r"^[A-Za-z0-9._@-]{3,128}$")
+_SAFE_IDENTITY = re.compile(r"^[A-Za-z0-9._@:-]{3,180}$")
 _ALLOWED_STATUSES = {"new", "investigating", "contained", "closed"}
 
 
