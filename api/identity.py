@@ -21,12 +21,14 @@ ROLE_CLAIM_MAP = {
     "SecureLab.ReadOnly": "readonly_agent",
     "SecureLab.SecurityAnalyst": "security_analyst_agent",
     "SecureLab.AccessRequest": "access_request_agent",
+    "SecureLab.HumanApprover": "human_approver",
 }
 
 ROLE_RANK = {
     "readonly_agent": 0,
     "security_analyst_agent": 1,
     "access_request_agent": 2,
+    "human_approver": 3,
 }
 
 
