@@ -1,0 +1,142 @@
+openapi: 3.0.3
+info:
+  title: Secure M365 Copilot Agent Lab API
+  version: 0.1.0
+  description: >
+    Synthetic security-operations API. Authorization is enforced by the
+    server-side gateway. Privileged operations create approval requests and do
+    not directly execute privileged changes.
+servers:
+  - url: ${API_BASE_URL}
+paths:
+  /knowledge/search:
+    post:
+      operationId: searchKnowledge
+      summary: Search approved synthetic security knowledge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: string
+                  maxLength: 300
+      responses:
+        "200":
+          description: Authorization decision and search result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayResponse"
+
+  /incidents/{incident_id}:
+    get:
+      operationId: getIncident
+      summary: Retrieve a synthetic incident
+      parameters:
+        - in: path
+          name: incident_id
+          required: true
+          schema:
+            type: string
+            pattern: "^INC-[0-9]{4,8}$"
+      responses:
+        "200":
+          description: Authorization decision and incident result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayResponse"
+
+  /incidents/{incident_id}/notes:
+    post:
+      operationId: addIncidentNote
+      summary: Add a bounded note to a synthetic incident
+      parameters:
+        - in: path
+          name: incident_id
+          required: true
+          schema:
+            type: string
+            pattern: "^INC-[0-9]{4,8}$"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [note]
+              properties:
+                note:
+                  type: string
+                  maxLength: 500
+      responses:
+        "200":
+          description: Authorization decision and updated incident
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayResponse"
+
+  /privileged/account-disable-requests:
+    post:
+      operationId: requestAccountDisable
+      summary: Create an approval request for synthetic account disablement
+      description: >
+        This operation must never directly disable an account. It creates a
+        pending approval request when deterministic policy authorizes the
+        request.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [target_user, justification]
+              properties:
+                target_user:
+                  type: string
+                justification:
+                  type: string
+                  minLength: 10
+      responses:
+        "200":
+          description: HOLD_FOR_APPROVAL decision and approval request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatewayResponse"
+
+components:
+  schemas:
+    GatewayResponse:
+      type: object
+      required:
+        - decision
+        - action
+        - executed
+        - reason
+      properties:
+        decision:
+          type: string
+          enum: [ALLOW, DENY, HOLD_FOR_APPROVAL]
+        action:
+          type: string
+        executed:
+          type: boolean
+        reason:
+          type: string
+        result:
+          type: object
+          nullable: true
+          additionalProperties: true
+        approval_request:
+          type: object
+          nullable: true
+          additionalProperties: true
+        correlation_id:
+          type: string
+          nullable: true
