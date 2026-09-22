@@ -24,3 +24,7 @@ build/
 Thumbs.db
 
 *.log
+
+# Microsoft 365 Copilot live evaluation output
+.evals/
+.env.local.user
