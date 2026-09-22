@@ -1,8 +1,4 @@
-"""Independent human approval workflow for privileged synthetic actions.
-
-The Copilot/agent tool surface can create approval requests, but approval itself
-is not an agent action. Approval requires a separately authorized human caller.
-"""
+"""Independent human approval workflow for privileged synthetic actions."""
 
 from __future__ import annotations
 
@@ -11,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any, Literal
 
 from api.gateway import SecurityGateway
+from api.storage import SQLiteStore
 
 
 class ApprovalError(ValueError):
@@ -35,33 +32,26 @@ class PrivilegedExecutor:
         "request_token_revocation",
     }
 
-    def __init__(self) -> None:
-        self.disabled_accounts: set[str] = set()
-        self.removed_privileged_memberships: set[str] = set()
-        self.revoked_tokens: set[str] = set()
+    def __init__(self, store: SQLiteStore) -> None:
+        self.store = store
+
+    @property
+    def disabled_accounts(self) -> set[str]:
+        return self.store.privileged_targets("account_disabled")
+
+    @property
+    def removed_privileged_memberships(self) -> set[str]:
+        return self.store.privileged_targets("privileged_group_removed")
+
+    @property
+    def revoked_tokens(self) -> set[str]:
+        return self.store.privileged_targets("tokens_revoked")
 
     def execute(self, action: str, arguments: dict[str, Any]) -> dict[str, Any]:
         if action not in self.ALLOWED_ACTIONS:
             raise ApprovalError("privileged executor received non-allowlisted action")
 
-        target_user = arguments["target_user"]
-
-        if action == "request_account_disable":
-            self.disabled_accounts.add(target_user)
-            return {"target_user": target_user, "account_disabled": True}
-
-        if action == "request_privileged_group_removal":
-            self.removed_privileged_memberships.add(target_user)
-            return {
-                "target_user": target_user,
-                "privileged_group_membership_removed": True,
-            }
-
-        if action == "request_token_revocation":
-            self.revoked_tokens.add(target_user)
-            return {"target_user": target_user, "tokens_revoked": True}
-
-        raise ApprovalError("unsupported privileged action")
+        return self.store.execute_privileged(action, arguments["target_user"])
 
 
 class ApprovalService:
@@ -71,21 +61,25 @@ class ApprovalService:
         executor: PrivilegedExecutor | None = None,
     ) -> None:
         self.gateway = gateway
-        self.executor = executor or PrivilegedExecutor()
-        self.approval_audit: list[dict[str, Any]] = []
+        self.store = gateway.store
+        self.executor = executor or PrivilegedExecutor(self.store)
+
+    @property
+    def approval_audit(self) -> list[dict[str, Any]]:
+        return [
+            event
+            for event in self.store.list_audit_events()
+            if event.get("event_type", "").startswith("privileged_request_")
+        ]
 
     def _find(self, approval_id: str) -> dict[str, Any]:
-        for request in self.gateway.approval_requests:
-            if request["approval_id"] == approval_id:
-                return request
-        raise ApprovalError("approval request not found")
+        request = self.store.get_approval(approval_id)
+        if request is None:
+            raise ApprovalError("approval request not found")
+        return request
 
     def list_pending(self) -> list[dict[str, Any]]:
-        return [
-            dict(request)
-            for request in self.gateway.approval_requests
-            if request["status"] == "pending"
-        ]
+        return self.store.list_approvals(status="pending")
 
     def decide(
         self,
@@ -113,26 +107,26 @@ class ApprovalService:
         if not isinstance(comment, str) or len(comment.strip()) < 5:
             raise ApprovalError("approval comment must contain at least 5 characters")
 
-        timestamp = datetime.now(timezone.utc).isoformat()
-        request["approver_user"] = approver_user_id
-        request["approver_role"] = approver_role
-        request["approval_comment"] = comment
-        request["decided_at"] = timestamp
-
         if decision == "deny":
-            request["status"] = "denied"
-            event = {
-                "timestamp": timestamp,
-                "event_type": "privileged_request_denied",
-                "approval_id": approval_id,
-                "requesting_user": request["requesting_user"],
-                "approver_user": approver_user_id,
-                "action": request["action"],
-                "executed": False,
-                "correlation_id": request["correlation_id"],
-            }
-            self.approval_audit.append(event)
-            self.gateway.audit_events.append(event)
+            request = self.store.decide_approval(
+                approval_id=approval_id,
+                status="denied",
+                approver_user=approver_user_id,
+                approver_role=approver_role,
+                comment=comment,
+            )
+            self.store.append_audit(
+                {
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "event_type": "privileged_request_denied",
+                    "approval_id": approval_id,
+                    "requesting_user": request["requesting_user"],
+                    "approver_user": approver_user_id,
+                    "action": request["action"],
+                    "executed": False,
+                    "correlation_id": request["correlation_id"],
+                }
+            )
             return ApprovalDecision(
                 approval_id=approval_id,
                 status="denied",
@@ -140,24 +134,28 @@ class ApprovalService:
                 reason="independent human approver denied the request",
             )
 
-        request["status"] = "approved"
+        request = self.store.decide_approval(
+            approval_id=approval_id,
+            status="approved",
+            approver_user=approver_user_id,
+            approver_role=approver_role,
+            comment=comment,
+        )
         result = self.executor.execute(request["action"], request["arguments"])
-        request["status"] = "executed"
-        request["executed_at"] = datetime.now(timezone.utc).isoformat()
-        request["execution_result"] = result
+        request = self.store.mark_approval_executed(approval_id, result)
 
-        event = {
-            "timestamp": request["executed_at"],
-            "event_type": "privileged_request_executed",
-            "approval_id": approval_id,
-            "requesting_user": request["requesting_user"],
-            "approver_user": approver_user_id,
-            "action": request["action"],
-            "executed": True,
-            "correlation_id": request["correlation_id"],
-        }
-        self.approval_audit.append(event)
-        self.gateway.audit_events.append(event)
+        self.store.append_audit(
+            {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "event_type": "privileged_request_executed",
+                "approval_id": approval_id,
+                "requesting_user": request["requesting_user"],
+                "approver_user": approver_user_id,
+                "action": request["action"],
+                "executed": True,
+                "correlation_id": request["correlation_id"],
+            }
+        )
 
         return ApprovalDecision(
             approval_id=approval_id,
