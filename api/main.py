@@ -7,6 +7,7 @@ from typing import Any
 from fastapi import Depends, FastAPI
 from pydantic import BaseModel, Field
 
+from api.approvals import ApprovalError, ApprovalService
 from api.authorization import exposed_actions_for_role
 from api.gateway import GatewayRequest, SecurityGateway, response_to_dict
 from api.identity import CallerContext, get_caller_context
@@ -22,6 +23,7 @@ app = FastAPI(
 )
 
 gateway = SecurityGateway()
+approval_service = ApprovalService(gateway)
 
 
 class ActionPayload(BaseModel):
@@ -39,6 +41,11 @@ class IncidentNotePayload(BaseModel):
 class AccountDisableRequestPayload(BaseModel):
     target_user: str
     justification: str
+
+
+class ApprovalDecisionPayload(BaseModel):
+    decision: str
+    comment: str
 
 
 def _invoke(
@@ -136,3 +143,45 @@ def invoke_action(
         arguments=payload.arguments,
         caller=caller,
     )
+
+
+
+@app.get("/approvals/pending")
+def pending_approvals(
+    caller: CallerContext = Depends(get_caller_context),
+) -> dict[str, Any]:
+    if caller.role != "human_approver":
+        return {"error": "human approver role required", "approvals": []}
+
+    return {"approvals": approval_service.list_pending()}
+
+
+@app.post("/approvals/{approval_id}/decision")
+def decide_approval(
+    approval_id: str,
+    payload: ApprovalDecisionPayload,
+    caller: CallerContext = Depends(get_caller_context),
+) -> dict[str, Any]:
+    try:
+        result = approval_service.decide(
+            approval_id=approval_id,
+            approver_user_id=caller.user_id,
+            approver_role=caller.role,
+            decision=payload.decision,
+            comment=payload.comment,
+        )
+    except ApprovalError as exc:
+        return {
+            "approval_id": approval_id,
+            "status": "rejected",
+            "executed": False,
+            "reason": str(exc),
+        }
+
+    return {
+        "approval_id": result.approval_id,
+        "status": result.status,
+        "executed": result.executed,
+        "reason": result.reason,
+        "result": result.result,
+    }
