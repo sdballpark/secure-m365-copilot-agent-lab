@@ -8,6 +8,7 @@ from typing import Any
 from uuid import uuid4
 
 from api.authorization import Decision, authorize
+from api.storage import SQLiteStore
 
 
 @dataclass
@@ -30,17 +31,15 @@ class GatewayResponse:
 
 
 class SyntheticBackend:
-    """Deliberately small backend for security-control testing."""
+    """Deliberately small persistent backend for security-control testing."""
 
-    def __init__(self) -> None:
-        self.incidents = {
-            "INC-1001": {
-                "incident_id": "INC-1001",
-                "status": "investigating",
-                "owner": "soc@example.test",
-                "notes": [],
-            }
-        }
+    def __init__(self, store: SQLiteStore) -> None:
+        self.store = store
+
+    @property
+    def incidents(self) -> dict[str, dict[str, Any]]:
+        """Compatibility view used by tests and demos."""
+        return self.store.incidents_dict()
 
     def execute(self, action: str, arguments: dict[str, Any]) -> dict[str, Any]:
         if action == "search_knowledge":
@@ -53,43 +52,41 @@ class SyntheticBackend:
             }
 
         if action == "get_incident":
-            incident = self.incidents.get(arguments["incident_id"])
-            return {"incident": incident}
+            return {"incident": self.store.get_incident(arguments["incident_id"])}
 
         if action == "add_incident_note":
-            incident = self.incidents.setdefault(
-                arguments["incident_id"],
-                {
-                    "incident_id": arguments["incident_id"],
-                    "status": "new",
-                    "owner": None,
-                    "notes": [],
-                },
-            )
-            incident["notes"].append(arguments["note"])
-            return {"incident": incident}
+            return {
+                "incident": self.store.add_incident_note(
+                    arguments["incident_id"], arguments["note"]
+                )
+            }
 
         if action == "update_incident_status":
-            incident = self.incidents.setdefault(
-                arguments["incident_id"],
-                {
-                    "incident_id": arguments["incident_id"],
-                    "status": "new",
-                    "owner": None,
-                    "notes": [],
-                },
-            )
-            incident["status"] = arguments["status"]
-            return {"incident": incident}
+            return {
+                "incident": self.store.update_incident_status(
+                    arguments["incident_id"], arguments["status"]
+                )
+            }
 
         raise RuntimeError(f"backend received unimplemented action: {action}")
 
 
 class SecurityGateway:
-    def __init__(self, backend: SyntheticBackend | None = None) -> None:
-        self.backend = backend or SyntheticBackend()
-        self.audit_events: list[dict[str, Any]] = []
-        self.approval_requests: list[dict[str, Any]] = []
+    def __init__(
+        self,
+        store: SQLiteStore | None = None,
+        backend: SyntheticBackend | None = None,
+    ) -> None:
+        self.store = store or SQLiteStore()
+        self.backend = backend or SyntheticBackend(self.store)
+
+    @property
+    def audit_events(self) -> list[dict[str, Any]]:
+        return self.store.list_audit_events()
+
+    @property
+    def approval_requests(self) -> list[dict[str, Any]]:
+        return self.store.list_approvals()
 
     def _audit(
         self,
@@ -100,9 +97,10 @@ class SecurityGateway:
         reason: str,
         correlation_id: str,
     ) -> None:
-        self.audit_events.append(
+        self.store.append_audit(
             {
                 "timestamp": datetime.now(timezone.utc).isoformat(),
+                "event_type": "gateway_decision",
                 "correlation_id": correlation_id,
                 "user_id": request.user_id,
                 "role": request.role,
@@ -139,16 +137,13 @@ class SecurityGateway:
             )
 
         if auth.decision is Decision.HOLD_FOR_APPROVAL:
-            approval = {
-                "approval_id": f"APR-{len(self.approval_requests) + 1:04d}",
-                "status": "pending",
-                "requesting_user": request.user_id,
-                "requesting_role": request.role,
-                "action": request.action,
-                "arguments": dict(request.arguments),
-                "correlation_id": correlation_id,
-            }
-            self.approval_requests.append(approval)
+            approval = self.store.create_approval(
+                requesting_user=request.user_id,
+                requesting_role=request.role,
+                action=request.action,
+                arguments=dict(request.arguments),
+                correlation_id=correlation_id,
+            )
             self._audit(
                 request=request,
                 decision=auth.decision.value,
