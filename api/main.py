@@ -11,18 +11,21 @@ from api.approvals import ApprovalError, ApprovalService
 from api.authorization import exposed_actions_for_role
 from api.gateway import GatewayRequest, SecurityGateway, response_to_dict
 from api.identity import CallerContext, get_caller_context
+from api.storage import SQLiteStore
 
 
 app = FastAPI(
     title="Secure M365 Copilot Agent Lab API",
-    version="0.2.0",
+    version="0.3.0",
     description=(
         "Synthetic action API demonstrating Microsoft Entra token validation, "
-        "deterministic authorization, human approval boundaries, and audit evidence."
+        "deterministic authorization, persistent approval state, human approval "
+        "boundaries, and tamper-evident audit evidence."
     ),
 )
 
-gateway = SecurityGateway()
+store = SQLiteStore.from_env()
+gateway = SecurityGateway(store=store)
 approval_service = ApprovalService(gateway)
 
 
@@ -145,7 +148,6 @@ def invoke_action(
     )
 
 
-
 @app.get("/approvals/pending")
 def pending_approvals(
     caller: CallerContext = Depends(get_caller_context),
@@ -185,3 +187,13 @@ def decide_approval(
         "reason": result.reason,
         "result": result.result,
     }
+
+
+@app.get("/audit/verify")
+def verify_audit_chain(
+    caller: CallerContext = Depends(get_caller_context),
+) -> dict[str, Any]:
+    if caller.role != "human_approver":
+        return {"valid": False, "error": "human approver role required"}
+
+    return store.verify_audit_chain()
