@@ -4,19 +4,20 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import FastAPI, Header
+from fastapi import Depends, FastAPI
 from pydantic import BaseModel, Field
 
 from api.authorization import exposed_actions_for_role
 from api.gateway import GatewayRequest, SecurityGateway, response_to_dict
+from api.identity import CallerContext, get_caller_context
 
 
 app = FastAPI(
     title="Secure M365 Copilot Agent Lab API",
-    version="0.1.0",
+    version="0.2.0",
     description=(
-        "Synthetic action API demonstrating deterministic authorization, "
-        "human approval boundaries, and audit evidence for AI agents."
+        "Synthetic action API demonstrating Microsoft Entra token validation, "
+        "deterministic authorization, human approval boundaries, and audit evidence."
     ),
 )
 
@@ -44,13 +45,12 @@ def _invoke(
     *,
     action: str,
     arguments: dict[str, Any],
-    x_user_id: str,
-    x_agent_role: str,
+    caller: CallerContext,
 ) -> dict[str, Any]:
     response = gateway.handle(
         GatewayRequest(
-            user_id=x_user_id,
-            role=x_agent_role,
+            user_id=caller.user_id,
+            role=caller.role,
             action=action,
             arguments=arguments,
         )
@@ -64,38 +64,36 @@ def health() -> dict[str, str]:
 
 
 @app.get("/actions")
-def actions(x_agent_role: str = Header(default="readonly_agent")) -> dict[str, Any]:
+def actions(
+    caller: CallerContext = Depends(get_caller_context),
+) -> dict[str, Any]:
     return {
-        "role": x_agent_role,
-        "actions": exposed_actions_for_role(x_agent_role),
+        "role": caller.role,
+        "actions": exposed_actions_for_role(caller.role),
     }
 
 
 @app.post("/knowledge/search")
 def search_knowledge(
     payload: KnowledgeSearchPayload,
-    x_user_id: str = Header(...),
-    x_agent_role: str = Header(default="readonly_agent"),
+    caller: CallerContext = Depends(get_caller_context),
 ) -> dict[str, Any]:
     return _invoke(
         action="search_knowledge",
         arguments={"query": payload.query},
-        x_user_id=x_user_id,
-        x_agent_role=x_agent_role,
+        caller=caller,
     )
 
 
 @app.get("/incidents/{incident_id}")
 def get_incident(
     incident_id: str,
-    x_user_id: str = Header(...),
-    x_agent_role: str = Header(default="readonly_agent"),
+    caller: CallerContext = Depends(get_caller_context),
 ) -> dict[str, Any]:
     return _invoke(
         action="get_incident",
         arguments={"incident_id": incident_id},
-        x_user_id=x_user_id,
-        x_agent_role=x_agent_role,
+        caller=caller,
     )
 
 
@@ -103,22 +101,19 @@ def get_incident(
 def add_incident_note(
     incident_id: str,
     payload: IncidentNotePayload,
-    x_user_id: str = Header(...),
-    x_agent_role: str = Header(default="readonly_agent"),
+    caller: CallerContext = Depends(get_caller_context),
 ) -> dict[str, Any]:
     return _invoke(
         action="add_incident_note",
         arguments={"incident_id": incident_id, "note": payload.note},
-        x_user_id=x_user_id,
-        x_agent_role=x_agent_role,
+        caller=caller,
     )
 
 
 @app.post("/privileged/account-disable-requests")
 def request_account_disable(
     payload: AccountDisableRequestPayload,
-    x_user_id: str = Header(...),
-    x_agent_role: str = Header(default="readonly_agent"),
+    caller: CallerContext = Depends(get_caller_context),
 ) -> dict[str, Any]:
     return _invoke(
         action="request_account_disable",
@@ -126,8 +121,7 @@ def request_account_disable(
             "target_user": payload.target_user,
             "justification": payload.justification,
         },
-        x_user_id=x_user_id,
-        x_agent_role=x_agent_role,
+        caller=caller,
     )
 
 
@@ -135,12 +129,10 @@ def request_account_disable(
 def invoke_action(
     action: str,
     payload: ActionPayload,
-    x_user_id: str = Header(...),
-    x_agent_role: str = Header(default="readonly_agent"),
+    caller: CallerContext = Depends(get_caller_context),
 ) -> dict[str, Any]:
     return _invoke(
         action=action,
         arguments=payload.arguments,
-        x_user_id=x_user_id,
-        x_agent_role=x_agent_role,
+        caller=caller,
     )
