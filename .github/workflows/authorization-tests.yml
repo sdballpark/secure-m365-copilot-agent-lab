@@ -33,6 +33,7 @@ jobs:
           tests/test_gateway.py
           tests/test_approval.py
           tests/test_storage.py
+          tests/test_m365_evals.py
           tests/test_agent_manifests.py
 
       - name: Run corpus schema tests
