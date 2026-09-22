@@ -98,3 +98,16 @@ Do not connect the declarative agent to a tenant until:
 - self-approval remains unavailable,
 - denied actions are absent from the plugin manifest,
 - secrets remain outside the repository.
+
+
+## Entra Authentication
+
+The action API now validates Microsoft Entra bearer access tokens and derives caller identity and role from trusted token claims.
+
+See:
+
+```text
+docs/ENTRA_AUTH.md
+```
+
+The previous lab-only identity headers are no longer part of the protected API route design.
