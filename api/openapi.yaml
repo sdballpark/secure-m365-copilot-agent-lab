@@ -8,6 +8,8 @@ info:
     not directly execute privileged changes.
 servers:
   - url: ${API_BASE_URL}
+security:
+  - bearerAuth: []
 paths:
   /knowledge/search:
     post:
@@ -111,6 +113,11 @@ paths:
                 $ref: "#/components/schemas/GatewayResponse"
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     GatewayResponse:
       type: object
