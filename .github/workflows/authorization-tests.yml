@@ -27,7 +27,7 @@ jobs:
 
       - name: Run identity, authorization, and gateway tests
         run: >
-          pytest -q
+          python -m pytest -q
           tests/test_identity.py
           tests/test_authorization.py
           tests/test_gateway.py
