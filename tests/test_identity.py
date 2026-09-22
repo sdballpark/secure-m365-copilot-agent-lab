@@ -99,3 +99,16 @@ def test_v1_token_is_rejected():
 
     with pytest.raises(IdentityError, match="v2.0"):
         claims_to_context(claims, CONFIG)
+
+
+
+def test_human_approver_role_maps_to_separate_control_plane_role():
+    role = resolve_internal_role(["SecureLab.HumanApprover"])
+    assert role == "human_approver"
+
+
+def test_human_approver_role_takes_precedence_over_agent_roles():
+    role = resolve_internal_role(
+        ["SecureLab.AccessRequest", "SecureLab.HumanApprover"]
+    )
+    assert role == "human_approver"
