@@ -1,0 +1,142 @@
+{
+  "schema_version": "v2.4",
+  "name_for_human": "Security Actions",
+  "namespace": "SecureLab",
+  "description_for_human": "Controlled synthetic security operations actions for the AI security lab.",
+  "description_for_model": "Use these functions only for synthetic security operations data. Reads retrieve lab knowledge or incidents. Writes update bounded synthetic incident state. Privileged functions create approval requests only; they do not directly execute privileged changes.",
+  "functions": [
+    {
+      "name": "searchKnowledge",
+      "description": "Search approved synthetic security knowledge.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Security knowledge search query."
+          }
+        },
+        "required": ["query"]
+      },
+      "capabilities": {
+        "confirmation": {
+          "type": "None",
+          "isNonConsequential": true
+        },
+        "security_info": {
+          "data_handling": ["GetPrivateData"]
+        }
+      }
+    },
+    {
+      "name": "getIncident",
+      "description": "Retrieve a synthetic incident by incident identifier.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "incident_id": {
+            "type": "string",
+            "description": "Synthetic incident identifier such as INC-1001."
+          }
+        },
+        "required": ["incident_id"]
+      },
+      "capabilities": {
+        "confirmation": {
+          "type": "None",
+          "isNonConsequential": true
+        },
+        "security_info": {
+          "data_handling": ["GetPrivateData"]
+        }
+      }
+    },
+    {
+      "name": "addIncidentNote",
+      "description": "Add a bounded note to a synthetic incident.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "incident_id": {
+            "type": "string",
+            "description": "Synthetic incident identifier such as INC-1001."
+          },
+          "note": {
+            "type": "string",
+            "description": "Investigation note to append to the incident."
+          }
+        },
+        "required": ["incident_id", "note"]
+      },
+      "capabilities": {
+        "confirmation": {
+          "type": "AdaptiveCard",
+          "title": "Add incident note",
+          "body": "Add this note to the synthetic incident?"
+        },
+        "security_info": {
+          "data_handling": ["ResourceStateUpdate"]
+        }
+      }
+    },
+    {
+      "name": "requestAccountDisable",
+      "description": "Create a human-approval request to disable a synthetic compromised account. This function does not disable the account directly.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target_user": {
+            "type": "string",
+            "description": "Synthetic target identity."
+          },
+          "justification": {
+            "type": "string",
+            "description": "Security justification for the requested containment."
+          }
+        },
+        "required": ["target_user", "justification"]
+      },
+      "capabilities": {
+        "confirmation": {
+          "type": "AdaptiveCard",
+          "title": "Request privileged containment",
+          "body": "Submit this account-disable request for independent human approval?"
+        },
+        "security_info": {
+          "data_handling": ["ResourceStateUpdate"]
+        }
+      }
+    }
+  ],
+  "runtimes": [
+    {
+      "type": "OpenApi",
+      "auth": {
+        "type": "OAuthPluginVault",
+        "reference_id": "${{OAUTH_REFERENCE_ID}}"
+      },
+      "run_for_functions": [
+        "searchKnowledge",
+        "getIncident",
+        "addIncidentNote",
+        "requestAccountDisable"
+      ],
+      "spec": {
+        "url": "${{API_BASE_URL}}/openapi.yaml",
+        "progress_style": "ShowUsageWithInput"
+      }
+    }
+  ],
+  "capabilities": {
+    "conversation_starters": [
+      {
+        "title": "Look up incident",
+        "text": "Show me synthetic incident INC-1001."
+      },
+      {
+        "title": "Request containment",
+        "text": "Request account disablement for a confirmed compromised synthetic user."
+      }
+    ]
+  }
+}
