@@ -2,14 +2,13 @@ FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1 \
-    SECURELAB_DB_PATH=/data/securelab.db
+    PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
 
 RUN addgroup --system securelab && \
     adduser --system --ingroup securelab --home /app securelab && \
-    mkdir -p /data && chown -R securelab:securelab /app /data
+    chown -R securelab:securelab /app
 
 COPY requirements.txt .
 RUN python -m pip install --upgrade pip && \
