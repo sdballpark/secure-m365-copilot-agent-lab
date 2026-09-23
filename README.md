@@ -578,11 +578,9 @@ These measurements are intentionally reported as separate layers. The manual liv
 
 ## Author
 
-**Robert L. Bogan Jr.**
+**Robert Bogan**
 
 AI Security & Governance Engineer | CISSP, CISM, CRISC
-
-CISSP
 
 [LinkedIn](https://www.linkedin.com/in/robert-l-bogan-jr)
 
