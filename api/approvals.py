@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from typing import Any, Literal
 
 from api.gateway import SecurityGateway
-from api.storage import SQLiteStore
+from api.storage_backend import StorageBackend
 
 
 class ApprovalError(ValueError):
@@ -32,7 +32,7 @@ class PrivilegedExecutor:
         "request_token_revocation",
     }
 
-    def __init__(self, store: SQLiteStore) -> None:
+    def __init__(self, store: StorageBackend) -> None:
         self.store = store
 
     @property
