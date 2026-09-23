@@ -53,8 +53,14 @@ def test_lifecycle_uses_v111_pkce_and_no_client_secret():
     assert lifecycle["version"] == "v1.11"
     provision = lifecycle["provision"]
     aad = next(x for x in provision if x["uses"] == "aadApp/create")
-    oauth = next(x for x in provision if x["uses"] == "oauth/register")
+    oauth_register = next(x for x in provision if x["uses"] == "oauth/register")
+    oauth_update = next(x for x in provision if x["uses"] == "oauth/update")
     assert aad["with"]["generateClientSecret"] is False
     assert aad["with"]["generateServicePrincipal"] is True
-    assert oauth["with"]["isPKCEEnabled"] is True
-    assert oauth["with"]["targetAudience"] == "HomeTenant"
+    assert oauth_register["with"]["isPKCEEnabled"] is True
+    assert oauth_register["with"]["targetAudience"] == "HomeTenant"
+    assert oauth_register["with"]["applicableToApps"] == "AnyApp"
+    assert oauth_update["with"]["configurationId"] == "${{SECURELAB_OAUTH_REGISTRATION_ID}}"
+    assert oauth_update["with"]["applicableToApps"] == "AnyApp"
+    assert oauth_update["with"]["targetAudience"] == "HomeTenant"
+    assert oauth_update["with"]["isPKCEEnabled"] is True
