@@ -18,6 +18,30 @@ def test_allowed_read_executes_and_is_audited():
     assert gateway.audit_events[0]["executed"] is True
 
 
+def test_knowledge_search_returns_approved_content():
+    gateway = SecurityGateway()
+    response = gateway.handle(
+        GatewayRequest(
+            user_id="analyst@example.test",
+            role="readonly_agent",
+            action="search_knowledge",
+            arguments={"query": "incident response severity guidance"},
+        )
+    )
+
+    assert response.decision == "ALLOW"
+    assert response.executed is True
+    assert response.result is not None
+    matches = response.result["matches"]
+    assert matches
+    incident_response = next(
+        item for item in matches if item["source"] == "incident-response.md"
+    )
+    assert "## Severity Levels" in incident_response["content"]
+    assert "SEV-1" in incident_response["content"]
+    assert all("adversarial" not in item["source"] for item in matches)
+
+
 def test_denied_write_does_not_execute():
     gateway = SecurityGateway()
     response = gateway.handle(
