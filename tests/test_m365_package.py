@@ -28,18 +28,28 @@ def test_plugin_has_no_approval_function():
     assert "approvePrivilegedRequest" not in names
     assert "disableAccount" not in names
     assert "requestAccountDisable" in names
+    auth = plugin["runtimes"][0]["auth"]
+    assert auth["type"] == "OAuthPluginVault"
+    assert auth["reference_id"] == "${{SECURELAB_SSO_AUTH_ID}}"
 
-def test_openapi_delegated_oauth():
+def test_openapi_delegated_sso_scope():
     with (APP / "apiSpecificationFile" / "openapi.yaml").open(encoding="utf-8") as f:
         spec = yaml.safe_load(f)
-    scope = "api://${{AAD_APP_CLIENT_ID}}/access_as_user"
+    scope = "${{SECURELAB_SSO_APP_ID_URI}}/access_as_user"
     assert spec["security"] == [{"OAuth2": [scope]}]
     assert scope in spec["components"]["securitySchemes"]["OAuth2"]["flows"]["authorizationCode"]["scopes"]
 
-def test_aad_manifest_roles():
+def test_aad_manifest_roles_and_token_store_preauth():
     manifest = load_json(ROOT / "aad.manifest.json")
     assert manifest["signInAudience"] == "AzureADMyOrg"
     assert manifest["api"]["requestedAccessTokenVersion"] == 2
+    assert manifest["identifierUris"] == ["${{SECURELAB_SSO_APP_ID_URI}}"]
+    preauth = manifest["api"]["preAuthorizedApplications"]
+    assert preauth[0]["appId"] == "ab3be6b7-f5df-413d-ac2d-abf1e3fd9c0b"
+    assert "c8bafb85-17bb-45b0-87d6-5362d71243e6" in preauth[0]["delegatedPermissionIds"]
+    assert manifest["web"]["redirectUris"] == [
+        "https://teams.microsoft.com/api/platform/v1.0/oAuthConsentRedirect"
+    ]
     assert {r["value"] for r in manifest["appRoles"]} == {
         "SecureLab.ReadOnly",
         "SecureLab.SecurityAnalyst",
@@ -47,20 +57,17 @@ def test_aad_manifest_roles():
         "SecureLab.HumanApprover",
     }
 
-def test_lifecycle_uses_v111_pkce_and_no_client_secret():
+def test_lifecycle_uses_microsoft_entra_sso_without_client_secret():
     with (ROOT / "m365agents.yml").open(encoding="utf-8") as f:
         lifecycle = yaml.safe_load(f)
     assert lifecycle["version"] == "v1.11"
     provision = lifecycle["provision"]
     aad = next(x for x in provision if x["uses"] == "aadApp/create")
-    oauth_register = next(x for x in provision if x["uses"] == "oauth/register")
-    oauth_update = next(x for x in provision if x["uses"] == "oauth/update")
+    oauth = next(x for x in provision if x["uses"] == "oauth/register")
     assert aad["with"]["generateClientSecret"] is False
     assert aad["with"]["generateServicePrincipal"] is True
-    assert oauth_register["with"]["isPKCEEnabled"] is True
-    assert oauth_register["with"]["targetAudience"] == "HomeTenant"
-    assert oauth_register["with"]["applicableToApps"] == "AnyApp"
-    assert oauth_update["with"]["configurationId"] == "${{SECURELAB_OAUTH_REGISTRATION_ID}}"
-    assert oauth_update["with"]["applicableToApps"] == "AnyApp"
-    assert oauth_update["with"]["targetAudience"] == "HomeTenant"
-    assert oauth_update["with"]["isPKCEEnabled"] is True
+    assert oauth["with"]["identityProvider"] == "MicrosoftEntra"
+    assert oauth["with"]["flow"] == "authorizationCode"
+    assert oauth["with"]["baseUrl"] == "${{API_BASE_URL}}"
+    assert oauth["writeToEnvironmentFile"]["configurationId"] == "SECURELAB_SSO_AUTH_ID"
+    assert oauth["writeToEnvironmentFile"]["applicationIdUri"] == "SECURELAB_SSO_APP_ID_URI"
