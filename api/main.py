@@ -11,7 +11,7 @@ from api.approvals import ApprovalError, ApprovalService
 from api.authorization import exposed_actions_for_role
 from api.gateway import GatewayRequest, SecurityGateway, response_to_dict
 from api.identity import CallerContext, get_caller_context
-from api.storage import SQLiteStore
+from api.storage_backend import store_from_env
 
 
 app = FastAPI(
@@ -24,7 +24,7 @@ app = FastAPI(
     ),
 )
 
-store = SQLiteStore.from_env()
+store = store_from_env()
 gateway = SecurityGateway(store=store)
 approval_service = ApprovalService(gateway)
 
