@@ -1,0 +1,82 @@
+openapi: 3.0.3
+info:
+  title: Secure M365 Copilot Agent Lab API
+  version: 0.3.0
+servers:
+  - url: ${{API_BASE_URL}}
+security:
+  - OAuth2:
+      - api://${{AAD_APP_CLIENT_ID}}/access_as_user
+paths:
+  /knowledge/search:
+    post:
+      operationId: searchKnowledge
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query: {type: string, maxLength: 300}
+      responses:
+        "200":
+          description: OK
+  /incidents/{incident_id}:
+    get:
+      operationId: getIncident
+      parameters:
+        - in: path
+          name: incident_id
+          required: true
+          schema: {type: string, pattern: "^INC-[0-9]{4,8}$"}
+      responses:
+        "200":
+          description: OK
+  /incidents/{incident_id}/notes:
+    post:
+      operationId: addIncidentNote
+      parameters:
+        - in: path
+          name: incident_id
+          required: true
+          schema: {type: string}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [note]
+              properties:
+                note: {type: string, maxLength: 500}
+      responses:
+        "200":
+          description: OK
+  /privileged/account-disable-requests:
+    post:
+      operationId: requestAccountDisable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [target_user, justification]
+              properties:
+                target_user: {type: string}
+                justification: {type: string, minLength: 10}
+      responses:
+        "200":
+          description: OK
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://login.microsoftonline.com/${{AAD_APP_TENANT_ID}}/oauth2/v2.0/authorize
+          tokenUrl: https://login.microsoftonline.com/${{AAD_APP_TENANT_ID}}/oauth2/v2.0/token
+          scopes:
+            api://${{AAD_APP_CLIENT_ID}}/access_as_user: Access SecureLab as the signed-in user.
