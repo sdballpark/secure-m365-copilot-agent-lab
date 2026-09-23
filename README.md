@@ -484,7 +484,7 @@ The goal is to build, attack, measure, and document practical security controls 
 
 ---
 
-## Roadmap
+## Implementation Status
 
 ### Phase 1 - Architecture and Threat Model
 
@@ -492,48 +492,49 @@ The goal is to build, attack, measure, and document practical security controls 
 - [x] Establish project structure
 - [x] Define initial architecture
 - [x] Establish threat-model framework
-- [ ] Build security-control matrix
+- [x] Build security-control matrix
 
 ### Phase 2 - Microsoft 365 Agent
 
-- [ ] Create Microsoft 365 Agents Toolkit project
-- [ ] Define declarative agent
-- [ ] Create agent instructions
-- [ ] Add conversation starters
-- [ ] Create synthetic enterprise knowledge
-- [ ] Configure SharePoint / OneDrive grounding
+- [x] Create Microsoft 365 Agents Toolkit project
+- [x] Define declarative agent
+- [x] Create agent instructions
+- [x] Add conversation starters
+- [x] Create synthetic enterprise knowledge
+- [x] Configure SharePoint / OneDrive grounding
 
 ### Phase 3 - Controlled Actions
 
-- [ ] Build controlled API
-- [ ] Establish identity context
-- [ ] Implement read-only action
-- [ ] Implement bounded write action
-- [ ] Add privileged approval boundary
-- [ ] Implement audit logging
+- [x] Build controlled API
+- [x] Establish identity context
+- [x] Implement read-only action
+- [x] Implement bounded write action
+- [x] Add privileged approval boundary
+- [x] Implement audit logging
 
 ### Phase 4 - Adversarial Testing
 
-- [ ] Build direct prompt-injection corpus
-- [ ] Build indirect prompt-injection corpus
-- [ ] Add unauthorized-data tests
-- [ ] Add data-exfiltration tests
-- [ ] Add tool-abuse tests
-- [ ] Add privilege-escalation tests
-- [ ] Add approval-bypass tests
-- [ ] Define expected results
+- [x] Build direct prompt-injection corpus
+- [x] Build indirect prompt-injection corpus
+- [x] Add unauthorized-data tests
+- [x] Add data-exfiltration tests
+- [x] Add tool-abuse tests
+- [x] Add privilege-escalation tests
+- [x] Add approval-bypass tests
+- [x] Define expected results
 
 ### Phase 5 - Evaluation
 
-- [ ] Establish baseline
-- [ ] Measure hardened configuration
-- [ ] Analyze false positives
-- [ ] Analyze false negatives
-- [ ] Add security regression tests
-- [ ] Add CI evaluation gate
+- [x] Establish baseline
+- [x] Measure hardened configuration
+- [x] Analyze false positives
+- [x] Analyze false negatives
+- [x] Add security regression tests
+- [x] Add CI evaluation gate
+- [ ] Automate live Microsoft 365 `runevals` execution
 
 ---
----
+
 ## Validated Lab State
 
 The lab now has a deployed and tested implementation.
