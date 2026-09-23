@@ -26,7 +26,7 @@ provision:
       teamsAppId: TEAMS_APP_ID
   - uses: oauth/register
     with:
-      name: SecureLabOAuth
+      name: OAuth2
       appId: ${{TEAMS_APP_ID}}
       clientId: ${{AAD_APP_CLIENT_ID}}
       apiSpecPath: ./appPackage/apiSpecificationFile/openapi.yaml
