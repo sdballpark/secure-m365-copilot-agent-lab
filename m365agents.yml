@@ -31,11 +31,20 @@ provision:
       clientId: ${{AAD_APP_CLIENT_ID}}
       apiSpecPath: ./appPackage/apiSpecificationFile/openapi.yaml
       flow: authorizationCode
-      applicableToApps: SpecificApp
+      applicableToApps: AnyApp
       targetAudience: HomeTenant
       isPKCEEnabled: true
     writeToEnvironmentFile:
       configurationId: SECURELAB_OAUTH_REGISTRATION_ID
+  - uses: oauth/update
+    with:
+      name: OAuth2
+      appId: ${{TEAMS_APP_ID}}
+      apiSpecPath: ./appPackage/apiSpecificationFile/openapi.yaml
+      configurationId: ${{SECURELAB_OAUTH_REGISTRATION_ID}}
+      applicableToApps: AnyApp
+      targetAudience: HomeTenant
+      isPKCEEnabled: true
   - uses: teamsApp/zipAppPackage
     with:
       manifestPath: ./appPackage/manifest.json
