@@ -9,6 +9,9 @@ Required environment variables:
   SECURELAB_APPROVAL_SCOPE
   SECURELAB_API_BASE_URL
 
+Recommended environment variable:
+  SECURELAB_APPROVER_UPN
+
 Examples:
   python scripts/securelab_approver.py pending
   python scripts/securelab_approver.py approve APR-0001 --comment "Independent review completed"
@@ -94,10 +97,28 @@ def _make_handler(callback: _CallbackState):
     return CallbackHandler
 
 
+def _token_claims(access_token: str) -> dict[str, Any]:
+    """Read selected JWT claims for local diagnostics only.
+
+    The API still performs the authoritative cryptographic token validation.
+    """
+    try:
+        parts = access_token.split(".")
+        if len(parts) < 2:
+            return {}
+        payload = parts[1] + "=" * (-len(parts[1]) % 4)
+        decoded = base64.urlsafe_b64decode(payload.encode("ascii"))
+        claims = json.loads(decoded.decode("utf-8"))
+        return claims if isinstance(claims, dict) else {}
+    except (ValueError, json.JSONDecodeError, UnicodeDecodeError):
+        return {}
+
+
 def acquire_token() -> str:
     tenant_id = _required_env("SECURELAB_TENANT_ID")
     client_id = _required_env("SECURELAB_APPROVAL_CLIENT_ID")
     scope = _required_env("SECURELAB_APPROVAL_SCOPE")
+    approver_upn = os.getenv("SECURELAB_APPROVER_UPN", "").strip()
 
     callback = _CallbackState()
     server = HTTPServer(("127.0.0.1", 0), _make_handler(callback))
@@ -120,7 +141,10 @@ def acquire_token() -> str:
                 "state": state,
                 "code_challenge": code_challenge,
                 "code_challenge_method": "S256",
-                "prompt": "select_account",
+                # Force fresh credentials instead of silently reusing an existing
+                # browser session for the requester's account.
+                "prompt": "login",
+                **({"login_hint": approver_upn} if approver_upn else {}),
             }
         )
     )
@@ -129,7 +153,10 @@ def acquire_token() -> str:
     thread.start()
 
     print("Opening Microsoft sign-in in your browser...")
-    print("Sign in with the independent SecureLab Human Approver account.")
+    if approver_upn:
+        print(f"Required approver identity: {approver_upn}")
+    else:
+        print("Sign in with the independent SecureLab Human Approver account.")
     if not webbrowser.open(authorize_url):
         print("Browser did not open automatically. Open this URL manually:")
         print(authorize_url)
@@ -180,6 +207,19 @@ def acquire_token() -> str:
     if not isinstance(access_token, str) or not access_token:
         raise SystemExit("Token response did not contain an access token.")
 
+    claims = _token_claims(access_token)
+    username = claims.get("preferred_username") or claims.get("upn") or "<not present>"
+    roles = claims.get("roles", [])
+    print(f"Authenticated Microsoft identity: {username}")
+    print(f"SecureLab token roles: {roles}")
+
+    if approver_upn and isinstance(username, str):
+        if username.casefold() != approver_upn.casefold():
+            raise SystemExit(
+                "Authenticated identity does not match SECURELAB_APPROVER_UPN; "
+                "approval operation aborted."
+            )
+
     return access_token
 
 
@@ -228,6 +268,19 @@ def main() -> int:
 
     args = parser.parse_args()
     token = acquire_token()
+
+    # Ask the API which role it resolved from the validated token before any
+    # approval operation. This is authoritative for SecureLab authorization.
+    identity = api_request("GET", "/actions", token)
+    print(
+        "SecureLab API resolved role: "
+        + str(identity.get("role", "<missing>"))
+    )
+    if identity.get("role") != "human_approver":
+        raise SystemExit(
+            "SecureLab API did not resolve this identity as human_approver; "
+            "approval operation aborted."
+        )
 
     if args.command == "pending":
         result = api_request("GET", "/approvals/pending", token)
