@@ -10,6 +10,7 @@ security:
 paths:
   /knowledge/search:
     post:
+      x-openai-isConsequential: false
       operationId: searchKnowledge
       requestBody:
         required: true
@@ -36,6 +37,7 @@ paths:
           description: OK
   /incidents/{incident_id}/notes:
     post:
+      x-openai-isConsequential: true
       operationId: addIncidentNote
       parameters:
         - in: path
@@ -56,6 +58,7 @@ paths:
           description: OK
   /privileged/account-disable-requests:
     post:
+      x-openai-isConsequential: true
       operationId: requestAccountDisable
       requestBody:
         required: true
