@@ -116,3 +116,39 @@ The Copilot-facing plugin manifest intentionally contains no function for:
 - executing privileged operations directly.
 
 Approval is a separate human control plane.
+
+
+## Live End-to-End Validation
+
+The independent approval boundary was validated in the deployed environment.
+
+The request path was:
+
+```text
+Microsoft 365 Copilot
+  -> SecureLab.AccessRequest
+  -> request_account_disable
+  -> HOLD_FOR_APPROVAL
+  -> APR-0001 pending
+```
+
+The requesting identity did not hold `SecureLab.HumanApprover`, and the agent
+surface exposed no approval operation.
+
+A separate Microsoft Entra user assigned only `SecureLab.HumanApprover`
+authenticated through the independent approval client using interactive browser
+authentication and MFA. The API resolved that token as `human_approver`.
+
+After the human approved `APR-0001`:
+
+- the request status changed to `executed`;
+- the approver's immutable `tid:oid` was stored separately from the requester;
+- the original server-stored target remained `compromised@example.test`;
+- the synthetic executor changed only `account_disabled`;
+- PostgreSQL persisted the execution result and timestamp;
+- the tamper-evident audit chain recorded `privileged_request_executed`;
+- independent audit verification returned `valid: true`.
+
+This demonstrates the intended security property: the AI agent can request a
+privileged operation, but cannot approve or execute it without a separately
+authenticated human control-plane identity.
