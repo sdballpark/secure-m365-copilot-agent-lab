@@ -15,10 +15,6 @@ provision:
       tenantId: AAD_APP_TENANT_ID
       authority: AAD_APP_OAUTH_AUTHORITY
       authorityHost: AAD_APP_OAUTH_AUTHORITY_HOST
-  - uses: aadApp/update
-    with:
-      manifestPath: ./aad.manifest.json
-      outputFilePath: ./build/aad.manifest.${{TEAMSFX_ENV}}.json
   - uses: teamsApp/create
     with:
       name: ${{AGENT_DISPLAY_NAME}}
@@ -27,24 +23,18 @@ provision:
   - uses: oauth/register
     with:
       name: OAuth2
+      flow: authorizationCode
       appId: ${{TEAMS_APP_ID}}
       clientId: ${{AAD_APP_CLIENT_ID}}
-      apiSpecPath: ./appPackage/apiSpecificationFile/openapi.yaml
-      flow: authorizationCode
-      applicableToApps: AnyApp
-      targetAudience: HomeTenant
-      isPKCEEnabled: true
+      identityProvider: MicrosoftEntra
+      baseUrl: ${{API_BASE_URL}}
     writeToEnvironmentFile:
-      configurationId: SECURELAB_OAUTH_REGISTRATION_ID
-  - uses: oauth/update
+      configurationId: SECURELAB_SSO_AUTH_ID
+      applicationIdUri: SECURELAB_SSO_APP_ID_URI
+  - uses: aadApp/update
     with:
-      name: OAuth2
-      appId: ${{TEAMS_APP_ID}}
-      apiSpecPath: ./appPackage/apiSpecificationFile/openapi.yaml
-      configurationId: ${{SECURELAB_OAUTH_REGISTRATION_ID}}
-      applicableToApps: AnyApp
-      targetAudience: HomeTenant
-      isPKCEEnabled: true
+      manifestPath: ./aad.manifest.json
+      outputFilePath: ./build/aad.manifest.${{TEAMSFX_ENV}}.json
   - uses: teamsApp/zipAppPackage
     with:
       manifestPath: ./appPackage/manifest.json
