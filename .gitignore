@@ -18,6 +18,7 @@ venv/
 node_modules/
 dist/
 build/
+appPackage/build/
 
 .idea/
 .DS_Store
@@ -25,6 +26,8 @@ Thumbs.db
 
 *.log
 
-# Microsoft 365 Copilot live evaluation output
 .evals/
 .env.local.user
+
+env/.env.*
+!env/.env.*.example
