@@ -580,7 +580,7 @@ These measurements are intentionally reported as separate layers. The manual liv
 
 **Robert L. Bogan Jr.**
 
-AI Security Architect | Senior Cybersecurity Engineer
+AI Security & Governance Engineer | CISSP, CISM, CRISC
 
 CISSP
 
