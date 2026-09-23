@@ -15,7 +15,7 @@ docs
 env
 evals
 evaluations
-knowledge
+knowledge/adversarial
 scripts
 security
 tests
@@ -25,3 +25,9 @@ tests
 *.key
 *.pfx
 *.p12
+
+# The runtime API intentionally includes only the approved synthetic knowledge
+# files. Adversarial knowledge remains excluded from the container image.
+!knowledge/
+!knowledge/*.md
+knowledge/adversarial/
