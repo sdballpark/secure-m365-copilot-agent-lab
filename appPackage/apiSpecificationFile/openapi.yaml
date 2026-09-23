@@ -6,7 +6,7 @@ servers:
   - url: ${{API_BASE_URL}}
 security:
   - OAuth2:
-      - api://${{AAD_APP_CLIENT_ID}}/access_as_user
+      - ${{SECURELAB_SSO_APP_ID_URI}}/access_as_user
 paths:
   /knowledge/search:
     post:
@@ -82,4 +82,4 @@ components:
           authorizationUrl: https://login.microsoftonline.com/${{AAD_APP_TENANT_ID}}/oauth2/v2.0/authorize
           tokenUrl: https://login.microsoftonline.com/${{AAD_APP_TENANT_ID}}/oauth2/v2.0/token
           scopes:
-            api://${{AAD_APP_CLIENT_ID}}/access_as_user: Access SecureLab as the signed-in user.
+            ${{SECURELAB_SSO_APP_ID_URI}}/access_as_user: Access SecureLab as the signed-in user.
