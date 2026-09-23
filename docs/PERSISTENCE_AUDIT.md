@@ -2,8 +2,11 @@
 
 ## Objective
 
-The lab persists operational state in SQLite and maintains a tamper-evident,
-append-only audit chain.
+The lab persists operational state in PostgreSQL for the deployed Azure environment
+and maintains a tamper-evident, append-only audit chain.
+
+SQLite remains available as the local/test fallback backend so the same security
+logic can be exercised without requiring a cloud database.
 
 This moves the design beyond process-local Python lists and allows:
 
@@ -15,25 +18,40 @@ This moves the design beyond process-local Python lists and allows:
 
 ## Database
 
-The API uses:
+The deployed Azure API uses Azure Database for PostgreSQL Flexible Server.
+
+When `SECURELAB_PGHOST` is present, the storage backend uses PostgreSQL with:
+
+```text
+SECURELAB_PGHOST
+SECURELAB_PGDATABASE
+SECURELAB_PGUSER
+SECURELAB_PGPASSWORD
+SECURELAB_PGPORT
+SECURELAB_PGSSLMODE
+```
+
+The deployed environment requires TLS with `SECURELAB_PGSSLMODE=require`.
+
+If PostgreSQL configuration is not present, the application falls back to SQLite
+for local development and tests using:
 
 ```text
 SECURELAB_DB_PATH
 ```
 
-If the variable is not set, the default is:
+with the default:
 
 ```text
 .local/securelab.db
 ```
 
-The `.local/` directory is ignored by Git.
-
-Unit tests use temporary or in-memory databases.
+The `.local/` directory is ignored by Git. Unit tests may use temporary or
+in-memory SQLite databases.
 
 ## Stored State
 
-SQLite tables contain:
+The storage backend contains:
 
 ```text
 incidents
@@ -44,6 +62,12 @@ audit_events
 ```
 
 The lab still uses synthetic data only.
+
+## PostgreSQL Concurrency Control
+
+PostgreSQL audit appends are serialized with a transaction-scoped advisory lock
+before the current chain head is read and the next event is written. This prevents
+concurrent writers from creating two events from the same previous hash.
 
 ## Append-Only Audit Chain
 
@@ -121,3 +145,24 @@ restart. An approver cannot substitute a new action or target during approval.
 > that produced it.
 
 > Historical audit mutation must be detectable by chain verification.
+
+
+## Live Validation Evidence
+
+The deployed Microsoft 365-to-Azure path was validated with PostgreSQL-backed state:
+
+- a synthetic incident note was written through Microsoft 365 Copilot and survived
+  an Azure Container Apps revision restart;
+- a privileged account-disable request entered `HOLD_FOR_APPROVAL` and remained
+  pending with no execution;
+- a separate Microsoft Entra identity holding only `SecureLab.HumanApprover`
+  authenticated with MFA through the independent approval client;
+- approval `APR-0001` executed only after independent human approval;
+- PostgreSQL recorded the separate approver identity, execution timestamp, and
+  execution result;
+- the synthetic privileged state changed only `account_disabled` for
+  `compromised@example.test`;
+- `GET /audit/verify` returned `valid: true` for a four-event audit chain.
+
+The validated chain included the original bounded write, incident read,
+`HOLD_FOR_APPROVAL` gateway decision, and privileged execution event.
