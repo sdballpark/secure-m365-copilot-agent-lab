@@ -16,6 +16,7 @@ RUN python -m pip install --upgrade pip && \
     python -m pip install -r requirements.txt
 
 COPY api ./api
+COPY knowledge/*.md ./knowledge/
 
 USER securelab
 
