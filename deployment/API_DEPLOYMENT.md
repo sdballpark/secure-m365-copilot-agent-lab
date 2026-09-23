@@ -27,10 +27,15 @@ ENTRA_TENANT_ID
 ENTRA_API_CLIENT_ID
 ENTRA_REQUIRED_SCOPE=access_as_user
 ENTRA_ALLOWED_CLIENT_IDS
-SECURELAB_DB_PATH=/data/securelab.db
+SECURELAB_PGHOST
+SECURELAB_PGDATABASE
+SECURELAB_PGUSER
+SECURELAB_PGPASSWORD
+SECURELAB_PGPORT=5432
+SECURELAB_PGSSLMODE=require
 ```
 
-The initial lab requires persistent storage mounted at `/data` so SQLite approvals and audit evidence survive container restart.
+The Azure-hosted lab uses Azure Database for PostgreSQL Flexible Server for durable incident, approval, privileged-state, and audit records. SQLite remains the local/test fallback when `SECURELAB_PGHOST` is not configured.
 
 ## HTTPS
 
@@ -64,9 +69,9 @@ A straightforward lab deployment can use Azure Container Apps with:
 - target port 8000,
 - minimum replicas 1,
 - secret-backed environment variables,
-- persistent Azure Files volume mounted at `/data`.
+- Azure Database for PostgreSQL Flexible Server with TLS required.
 
-For a production architecture, replace local SQLite with an externally managed database and export audit events to a separately administered immutable logging destination.
+Azure Files is not used for the SQLite database because SMB file-locking semantics caused `sqlite3.OperationalError: database is locked` during container startup. For a production architecture, also export audit events to a separately administered immutable logging destination.
 
 ## Local Container Check
 
