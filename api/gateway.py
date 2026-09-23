@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from api.authorization import Decision, authorize
 from api.storage import SQLiteStore
+from api.storage_backend import StorageBackend
 
 
 @dataclass
@@ -42,7 +43,7 @@ class SyntheticBackend:
         "privileged-access-policy.md",
     )
 
-    def __init__(self, store: SQLiteStore) -> None:
+    def __init__(self, store: StorageBackend) -> None:
         self.store = store
         self.knowledge_root = Path(__file__).resolve().parents[1] / "knowledge"
 
@@ -112,7 +113,7 @@ class SyntheticBackend:
 class SecurityGateway:
     def __init__(
         self,
-        store: SQLiteStore | None = None,
+        store: StorageBackend | None = None,
         backend: SyntheticBackend | None = None,
     ) -> None:
         self.store = store or SQLiteStore()
