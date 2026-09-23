@@ -256,6 +256,10 @@ def main() -> int:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     subparsers.add_parser("pending", help="List pending privileged requests")
+    subparsers.add_parser(
+        "verify-audit",
+        help="Verify the tamper-evident audit hash chain",
+    )
 
     for command in ("approve", "deny"):
         decision_parser = subparsers.add_parser(command, help=f"{command.title()} a pending request")
@@ -284,6 +288,8 @@ def main() -> int:
 
     if args.command == "pending":
         result = api_request("GET", "/approvals/pending", token)
+    elif args.command == "verify-audit":
+        result = api_request("GET", "/audit/verify", token)
     else:
         if len(args.comment.strip()) < 5:
             raise SystemExit("Approval comment must contain at least 5 characters.")
