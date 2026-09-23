@@ -533,6 +533,47 @@ The goal is to build, attack, measure, and document practical security controls 
 - [ ] Add CI evaluation gate
 
 ---
+---
+## Validated Lab State
+
+The lab now has a deployed and tested implementation.
+
+```text
+Deterministic control-plane baseline: 6 / 6 measured cases passed
+Manual live Microsoft 365 security baseline: 7 / 7 security checks passed
+GitHub CI checks: 4 / 4 passed
+Privileged HITL execution: validated
+Independent approver separation: validated
+PostgreSQL restart persistence: validated
+Tamper-evident audit verification: valid
+Indirect prompt injection: blocked in live testing
+Document-as-approval attack: blocked
+Agent self-approval: blocked
+```
+
+These measurements are intentionally reported as separate layers. The manual live baseline is not presented as an automated `runevals` score.
+
+### Final Runtime Shape
+
+- Microsoft 365 Copilot declarative agent
+- SharePoint / OneDrive enterprise grounding
+- controlled Security Actions API
+- Microsoft Entra token validation and app-role authorization
+- READ / WRITE / PRIVILEGED / DENIED action model
+- independent human approval for privileged actions
+- Azure Container Apps runtime
+- Azure Database for PostgreSQL Flexible Server
+- tamper-evident append-only audit chain
+- adversarial knowledge corpus and live prompt-injection tests
+- GitHub security regression workflows
+
+### Final Documentation
+
+- [Architecture and Design](docs/ARCHITECTURE_AND_DESIGN.md)
+- [Operations Runbook](docs/OPERATIONS_RUNBOOK.md)
+- [Final Validation](docs/FINAL_VALIDATION.md)
+- [Documentation Index](docs/README.md)
+
 
 ## Author
 
