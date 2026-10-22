@@ -580,7 +580,7 @@ These measurements are intentionally reported as separate layers. The manual liv
 
 **Robert Bogan**
 
-AI Security & Governance Engineer | CISSP, CISM, CRISC
+AI Security Architect | CISSP, CISM, CRISC
 
 [LinkedIn](https://www.linkedin.com/in/robert-l-bogan-jr)
 
