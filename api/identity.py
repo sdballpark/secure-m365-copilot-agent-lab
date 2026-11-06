@@ -87,6 +87,11 @@ def config_from_env() -> EntraConfig:
         missing.append("ENTRA_API_CLIENT_ID")
     if not required_scope:
         missing.append("ENTRA_REQUIRED_SCOPE")
+    if not allowed_client_ids:
+        # Required, not optional. An empty allowlist used to skip the client
+        # check entirely, so any client application in the tenant could call
+        # the API with a valid user token. Missing configuration now refuses.
+        missing.append("ENTRA_ALLOWED_CLIENT_IDS")
 
     if missing:
         raise IdentityError(
@@ -151,7 +156,12 @@ def claims_to_context(
     if not isinstance(client_id, str) or not client_id:
         raise IdentityError("token is missing authorized client identifier")
 
-    if config.allowed_client_ids and client_id not in config.allowed_client_ids:
+    if not config.allowed_client_ids:
+        # Fail closed. Reached only if an EntraConfig is built without going
+        # through config_from_env, which already refuses an empty allowlist.
+        raise IdentityError("no client applications are allowlisted; refusing all clients")
+
+    if client_id not in config.allowed_client_ids:
         raise IdentityError("calling client application is not allowlisted")
 
     role = resolve_internal_role(claims.get("roles"))

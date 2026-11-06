@@ -114,6 +114,10 @@ The API validates the token's authorized-party/client claim (`azp`, with `appid`
 
 This prevents an otherwise valid user token obtained by an unapproved client application from silently becoming sufficient authorization.
 
+The setting is required. If it is unset or empty, the API refuses every request and the error names the missing setting; it never falls back to accepting any client.
+
+Earlier versions skipped the client check when the allowlist was empty, which meant a deployment that omitted the setting accepted tokens from any client application in the tenant. That was fail-open. It was found in a review of this repository and fixed, with tests that an empty allowlist refuses.
+
 ## Local Development
 
 Do not disable token validation in the production API path.

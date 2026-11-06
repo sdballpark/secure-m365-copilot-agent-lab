@@ -112,3 +112,43 @@ def test_human_approver_role_takes_precedence_over_agent_roles():
         ["SecureLab.AccessRequest", "SecureLab.HumanApprover"]
     )
     assert role == "human_approver"
+
+
+def test_empty_client_allowlist_refuses_every_client():
+    """An empty allowlist must refuse, not skip the check.
+
+    Before the fix, `if config.allowed_client_ids and ...` short-circuited on an
+    empty tuple, so any client application in the tenant was accepted.
+    """
+    open_config = EntraConfig(
+        tenant_id=CONFIG.tenant_id,
+        api_client_id=CONFIG.api_client_id,
+        required_scope="access_as_user",
+        allowed_client_ids=(),
+    )
+    with pytest.raises(IdentityError, match="no client applications are allowlisted"):
+        claims_to_context(good_claims(), open_config)
+
+
+@pytest.mark.parametrize("value", [None, "", " ", ", ,"])
+def test_config_requires_a_client_allowlist(monkeypatch, value):
+    from api.identity import config_from_env
+
+    monkeypatch.setenv("ENTRA_TENANT_ID", CONFIG.tenant_id)
+    monkeypatch.setenv("ENTRA_API_CLIENT_ID", CONFIG.api_client_id)
+    if value is None:
+        monkeypatch.delenv("ENTRA_ALLOWED_CLIENT_IDS", raising=False)
+    else:
+        monkeypatch.setenv("ENTRA_ALLOWED_CLIENT_IDS", value)
+
+    with pytest.raises(IdentityError, match="ENTRA_ALLOWED_CLIENT_IDS"):
+        config_from_env()
+
+
+def test_config_accepts_a_populated_client_allowlist(monkeypatch):
+    from api.identity import config_from_env
+
+    monkeypatch.setenv("ENTRA_TENANT_ID", CONFIG.tenant_id)
+    monkeypatch.setenv("ENTRA_API_CLIENT_ID", CONFIG.api_client_id)
+    monkeypatch.setenv("ENTRA_ALLOWED_CLIENT_IDS", "33333333-3333-3333-3333-333333333333")
+    assert config_from_env().allowed_client_ids == ("33333333-3333-3333-3333-333333333333",)
